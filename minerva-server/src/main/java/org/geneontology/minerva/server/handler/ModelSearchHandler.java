@@ -385,14 +385,8 @@ public class ModelSearchHandler {
 		//			taxa_constraint = model_filter;
 		//		}
 		String title_search_constraint = "";
-		if(title_search!=null) {
-			title_search_constraint = "?title <http://www.bigdata.com/rdf/search#search> \""+title_search+"\" .\n";
-			if(!title_search.contains("*")) {
-				title_search_constraint+=" ?title <http://www.bigdata.com/rdf/search#matchAllTerms> \""+"true"+"\" . \n";
-			}
-			//			if(exact_match) {
-			//				title_search_constraint+=" ?title <http://www.bigdata.com/rdf/search#matchExact>  \""+"true"+"\" . \n";
-			//			}
+		if(title_search!=null) {			
+			title_search_constraint = "filter contains( lcase(?title), \""+title_search.toLowerCase()+"\") .\n";
 		}
 		String state_search_constraint = "";
 		if(state_search!=null&&state_search.size()>0) {
