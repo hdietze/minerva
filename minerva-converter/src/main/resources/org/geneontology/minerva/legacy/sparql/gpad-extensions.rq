@@ -41,6 +41,7 @@ VALUES ?extension_rel {
 <http://purl.obolibrary.org/obo/RO_0001025>
 <http://purl.obolibrary.org/obo/RO_0002007>
 <http://purl.obolibrary.org/obo/RO_0002008>
+<http://purl.obolibrary.org/obo/RO_0002011>
 <http://purl.obolibrary.org/obo/RO_0002087>
 <http://purl.obolibrary.org/obo/RO_0002090>
 <http://purl.obolibrary.org/obo/RO_0002092>
@@ -90,11 +91,14 @@ VALUES ?extension_rel {
 <http://purl.obolibrary.org/obo/RO_0002429>
 <http://purl.obolibrary.org/obo/RO_0002430>
 <http://purl.obolibrary.org/obo/RO_0002431>
+<http://purl.obolibrary.org/obo/RO_0002491>
 <http://purl.obolibrary.org/obo/RO_0002495>
 <http://purl.obolibrary.org/obo/RO_0002565>
 <http://purl.obolibrary.org/obo/RO_0002578>
 <http://purl.obolibrary.org/obo/RO_0002629>
 <http://purl.obolibrary.org/obo/RO_0002630>
+<http://purl.obolibrary.org/obo/RO_0004008>
+<http://purl.obolibrary.org/obo/RO_0004009>
 }
 
 ?target ?extension_rel ?extension . 

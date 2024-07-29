@@ -43,11 +43,15 @@ public class GPADSPARQLExport {
     private static final String BP = "http://purl.obolibrary.org/obo/GO_0008150";
     private static final String CC = "http://purl.obolibrary.org/obo/GO_0005575";
     private static final Set<String> rootTerms = new HashSet<>(Arrays.asList(MF, BP, CC));
+
+    private static final String HAS_INPUT = "http://purl.obolibrary.org/obo/RO_0002233";
     private static final String ENABLES = "http://purl.obolibrary.org/obo/RO_0002327";
     private static final String CONTRIBUTES_TO = "http://purl.obolibrary.org/obo/RO_0002326";
     private static final Set<String> functionRelations = new HashSet<>(Arrays.asList(ENABLES, CONTRIBUTES_TO));
     private static final String EMAPA_NAMESPACE = "http://purl.obolibrary.org/obo/EMAPA_";
     private static final String UBERON_NAMESPACE = "http://purl.obolibrary.org/obo/UBERON_";
+
+    private static final String TAXON_NAMESPACE = "http://purl.obolibrary.org/obo/NCBITaxon_";
     private static final String inconsistentQuery =
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>" +
                     "PREFIX owl: <http://www.w3.org/2002/07/owl#>" +
@@ -167,13 +171,18 @@ public class GPADSPARQLExport {
                     annotationEvidences.forEach(currentEvidence -> {
                         String reference = currentEvidence.getReference();
                         Set<ConjunctiveExpression> goodExtensions = new HashSet<>();
+                        Optional<IRI> interactingTaxon = Optional.empty();
                         for (AnnotationExtension extension : possibleExtensions) {
                             if (extension.getTriple().getSubject().equals(annotation.getOntologyClassNode()) && !(extension.getTriple().getObject().equals(annotation.getObjectNode()))) {
                                 for (Explanation expl : allExplanations.get(extension.getTriple())) {
                                     boolean allFactsOfExplanationHaveRefMatchingAnnotation = toJava(expl.facts()).stream().map(fact -> allEvidences.getOrDefault(Bridge.jenaFromTriple(fact), Collections.emptySet())).allMatch(evidenceSet ->
                                             evidenceSet.stream().anyMatch(ev -> ev.getReference().equals(reference)));
                                     if (allFactsOfExplanationHaveRefMatchingAnnotation) {
-                                        goodExtensions.add(new DefaultConjunctiveExpression(IRI.create(extension.getTriple().getPredicate().getURI()), extension.getValueType()));
+                                        if (!interactingTaxon.isPresent() && extension.getTriple().getPredicate().getURI().equals(HAS_INPUT) && extension.getValueType().toString().startsWith(TAXON_NAMESPACE)) {
+                                            interactingTaxon = Optional.of(extension.getValueType());
+                                        } else {
+                                            goodExtensions.add(new DefaultConjunctiveExpression(IRI.create(extension.getTriple().getPredicate().getURI()), extension.getValueType()));
+                                        }
                                     }
                                 }
                             }
@@ -191,7 +200,7 @@ public class GPADSPARQLExport {
                         final boolean rootMFWithOtherMF = annotation.getOntologyClass().toString().equals(MF) && gpsWithAnyMFNotRootMF.contains(annotation.getObject());
                         if (!rootViolation && !rootMFWithOtherMF) {
                             DefaultGPADData defaultGPADData = new DefaultGPADData(annotation.getObject(), annotation.getQualifier(), annotation.getOntologyClass(), goodExtensions,
-                                    reference, currentEvidence.getEvidence(), currentEvidence.getWithOrFrom(), Optional.empty(), currentEvidence.getModificationDate(),
+                                    reference, currentEvidence.getEvidence(), currentEvidence.getWithOrFrom(), interactingTaxon, currentEvidence.getModificationDate(),
                                     currentEvidence.getAssignedBy(), currentEvidence.getAnnotations());
                             defaultGPADData.setOperator(annotation.getOperator());
                             annotations.add(defaultGPADData);

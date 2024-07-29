@@ -180,4 +180,21 @@ public class GPADSPARQLTest {
         Assert.assertTrue(annotations.stream().noneMatch(a -> a.getObject().equals(gene) && a.getOntologyClass().equals(regulated)));
     }
 
+    @Test
+    public void testInteractingTaxon() {
+        Model model = ModelFactory.createDefaultModel();
+        model.read(this.getClass().getResourceAsStream("/MGI_MGI_2429397.ttl"), "", "ttl");
+        Set<Triple> triples = model.listStatements().toList().stream().map(s -> Bridge.tripleFromJena(s.asTriple())).collect(Collectors.toSet());
+        WorkingMemory mem = arachne.processTriples(JavaConverters.asScalaSetConverter(triples).asScala());
+        Set<GPADData> annotations = exporter.getGPAD(mem, IRI.create("http://test.org"));
+        IRI gene = IRI.create("http://identifiers.org/mgi/MGI:2429397");
+        IRI interactingTaxon = IRI.create("http://purl.obolibrary.org/obo/NCBITaxon_196620");
+        Assert.assertTrue(annotations.stream().anyMatch(
+                a -> a.getObject().equals(gene) &&
+                        a.getInteractingTaxonID().isPresent() &&
+                        a.getInteractingTaxonID().get().equals(interactingTaxon)));
+        Assert.assertTrue(annotations.stream().noneMatch(a ->
+                a.getAnnotationExtensions().stream().anyMatch(ce -> ce.getFiller().equals(interactingTaxon))));
+    }
+
 }
