@@ -10,6 +10,7 @@ import org.openrdf.query.*;
 import org.openrdf.repository.RepositoryException;
 import org.semanticweb.owlapi.model.IRI;
 
+import javax.annotation.Nullable;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
@@ -89,6 +90,8 @@ public class ModelSearchHandler {
         private String date;
         private String title;
         private String state;
+        @SerializedName("conforms-to-gpad")
+        private Boolean conformsToGPAD;
         private Set<String> contributors;
         private Set<String> groups;
         private HashMap<String, Set<String>> query_match;
@@ -96,11 +99,12 @@ public class ModelSearchHandler {
         @SerializedName("modified-p")
         private boolean modified;
 
-        public ModelMeta(String id, String date, String title, String state, Set<String> contributors, Set<String> groups, boolean modified) {
+        public ModelMeta(String id, String date, String title, String state, @Nullable Boolean conformsToGPAD, Set<String> contributors, Set<String> groups, boolean modified) {
             this.id = id;
             this.date = date;
             this.title = title;
             this.state = state;
+            this.conformsToGPAD = conformsToGPAD;
             this.contributors = contributors;
             this.groups = groups;
             this.modified = modified;
@@ -148,6 +152,15 @@ public class ModelSearchHandler {
 
         public void setState(String state) {
             this.state = state;
+        }
+
+        @Nullable
+        public Boolean getConformsToGPAD() {
+            return this.conformsToGPAD;
+        }
+
+        public void setConformsToGPAD(Boolean conforms) {
+            this.conformsToGPAD = conforms;
         }
 
         public Set<String> getContributors() {
@@ -454,7 +467,7 @@ public class ModelSearchHandler {
         String group_by_constraint = "GROUP BY ?id";
         //default return block
         //TODO investigate need to add DISTINCT to GROUP_CONCAT here
-        String return_block = "?id (MIN(?date) AS ?mindate) (MIN(?title) AS ?mintitle) (MIN(?state) AS ?minstate) <ind_return_list> (GROUP_CONCAT(DISTINCT ?contributor;separator=\";\") AS ?contributors) (GROUP_CONCAT(DISTINCT ?group;separator=\";\") AS ?groups)";
+        String return_block = "?id (MIN(?date) AS ?mindate) (MIN(?title) AS ?mintitle) (MIN(?state) AS ?minstate) (MIN(?conformsToGPAD) AS ?minConformsToGPAD) <ind_return_list> (GROUP_CONCAT(DISTINCT ?contributor;separator=\";\") AS ?contributors) (GROUP_CONCAT(DISTINCT ?group;separator=\";\") AS ?groups)";
         if (count != null) {
             return_block = "(count(distinct ?id) as ?count)";
             limit_constraint = "";
@@ -525,6 +538,12 @@ public class ModelSearchHandler {
                     if (state_binding != null) {
                         state = state_binding.getValue().stringValue();
                     }
+                    Binding conformanceBinding = bs.getBinding("minConformsToGPAD");
+                    Boolean conformance = null;
+                    if (conformanceBinding != null) {
+                        System.out.println("CONFORMANCE: " + conformanceBinding.getValue().stringValue());
+                        conformance = Boolean.valueOf(conformanceBinding.getValue().stringValue());
+                    }
                     Binding group_binding = bs.getBinding("groups");
                     String groups_ = "";
                     if (group_binding != null) {
@@ -539,7 +558,7 @@ public class ModelSearchHandler {
                     if (mm == null) {
                         //look up model in in-memory cache to check edit state
                         boolean is_modified = m3.isModelModified(model_iri);
-                        mm = new ModelMeta(model_curie, date, title, state, contributors, groups, is_modified);
+                        mm = new ModelMeta(model_curie, date, title, state, conformance, contributors, groups, is_modified);
                     }
                     //matching
                     for (String ind : ind_return.keySet()) {

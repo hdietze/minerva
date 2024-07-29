@@ -21,6 +21,7 @@ GRAPH ?id {
 <http://purl.org/dc/elements/1.1/contributor> ?contributor ;
 optional{?id <http://purl.org/pav/providedBy> ?group } .
 optional{?id lego:modelstate ?state } .
+optional{?id lego:conforms_to_gpad ?conformsToGPAD}
 <types>
 <state_constraint>
 <contributor_constraint>
