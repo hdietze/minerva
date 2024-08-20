@@ -51,7 +51,7 @@ public class GPADSPARQLExport {
     private static final String EMAPA_NAMESPACE = "http://purl.obolibrary.org/obo/EMAPA_";
     private static final String UBERON_NAMESPACE = "http://purl.obolibrary.org/obo/UBERON_";
 
-    private static final String TAXON_NAMESPACE = "http://purl.obolibrary.org/obo/NCBITaxon_";
+    protected static final String TAXON_NAMESPACE = "http://purl.obolibrary.org/obo/NCBITaxon_";
     private static final String inconsistentQuery =
             "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>" +
                     "PREFIX owl: <http://www.w3.org/2002/07/owl#>" +

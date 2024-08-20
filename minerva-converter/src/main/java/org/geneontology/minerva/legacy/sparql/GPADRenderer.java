@@ -46,7 +46,11 @@ public class GPADRenderer {
             columns.add(data.getReference());
             columns.add(curieHandler.getCuri(data.getEvidence()));
             columns.add(data.getWithOrFrom().orElse(""));
-            columns.add(data.getInteractingTaxonID().map(curieHandler::getCuri).orElse(""));
+            columns.add(data.getInteractingTaxonID().map(taxonIRI -> {
+                if (taxonIRI.toString().startsWith(GPADSPARQLExport.TAXON_NAMESPACE)) {
+                    return taxonIRI.toString().replace(GPADSPARQLExport.TAXON_NAMESPACE, "taxon:");
+                } else return curieHandler.getCuri(taxonIRI);
+            }).orElse(""));
             columns.add(formatDate(data.getModificationDate()));
             columns.add(data.getAssignedBy());
             columns.add(formatAnnotationExtensions(data.getAnnotationExtensions()));
