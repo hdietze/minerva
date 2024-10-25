@@ -14,13 +14,15 @@ import fr.inria.lille.shexjava.validation.RefineValidation;
 import fr.inria.lille.shexjava.validation.Status;
 import fr.inria.lille.shexjava.validation.Typing;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.rdf.api.RDF;
-import org.apache.commons.rdf.api.RDFTerm;
-import org.apache.commons.rdf.jena.JenaGraph;
-import org.apache.commons.rdf.jena.JenaRDF;
+import org.apache.commons.rdf.api.*;
 import org.apache.commons.rdf.simple.SimpleRDF;
+import org.apache.jena.commonsrdf.JenaCommonsRDF;
+import org.apache.jena.commonsrdf.JenaRDF;
+import org.apache.jena.commonsrdf.impl.JenaGraph;
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.*;
+import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.sys.JenaSystem;
 import org.apache.log4j.Logger;
 import org.geneontology.minerva.BlazegraphOntologyManager;
 import org.geneontology.minerva.curie.CurieHandler;
@@ -34,7 +36,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 /**
  * @author bgood
@@ -67,6 +71,7 @@ public class ShexValidator {
     }
 
     public void init(File shex_schema_file, File shex_map_file, BlazegraphOntologyManager go_lego, CurieHandler curieHandler_) throws Exception {
+        JenaSystem.init();
         schema = GenParser.parseSchema(shex_schema_file.toPath());
         GoQueryMap = makeGoQueryMap(shex_map_file.getAbsolutePath());
         //tbox_reasoner = tbox_reasoner_;
@@ -115,9 +120,8 @@ public class ShexValidator {
     public ShexValidationReport runShapeMapValidation(Model test_model) {
         boolean explain = true;
         ShexValidationReport r = new ShexValidationReport();
-        JenaRDF jr = new JenaRDF();
         //this shex implementation likes to use the commons JenaRDF interface, nothing exciting here
-        JenaGraph shexy_graph = jr.asGraph(test_model);
+        Graph shexy_graph = JenaCommonsRDF.fromJena(test_model.getGraph());
         boolean all_good = true;
         try {
             Typing all_typed = runRefineWithTimeout(shexy_graph);
@@ -251,7 +255,7 @@ public class ShexValidator {
         ShexValidationReport r = new ShexValidationReport();
         JenaRDF jr = new JenaRDF();
         //this shex implementation likes to use the commons JenaRDF interface, nothing exciting here
-        JenaGraph shexy_graph = jr.asGraph(test_model);
+        Graph shexy_graph = JenaCommonsRDF.fromJena(test_model.getGraph());
         //recursive only checks the focus node against the chosen shape.
         RecursiveValidationWithMemorization shex_model_validator = new RecursiveValidationWithMemorization(schema, shexy_graph);
         //for each shape in the query map (e.g. MF, BP, CC, etc.)
@@ -391,7 +395,7 @@ public class ShexValidator {
         return node_s_shapes;
     }
 
-    private Typing runRefineWithTimeout(JenaGraph shexy_graph) {
+    private Typing runRefineWithTimeout(Graph shexy_graph) {
         final ExecutorService service = Executors.newSingleThreadExecutor();
         try {
             final Future<Typing> f = service.submit(() -> {

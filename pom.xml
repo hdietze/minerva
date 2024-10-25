@@ -325,8 +325,13 @@
             <dependency>
                 <groupId>org.apache.jena</groupId>
                 <artifactId>apache-jena-libs</artifactId>
-                <version>3.12.0</version>
+                <version>4.9.0</version>
                 <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.jena</groupId>
+                <artifactId>jena-commonsrdf</artifactId>
+                <version>4.9.0</version>
             </dependency>
             <dependency>
                 <groupId>net.sf.trove4j</groupId>
@@ -344,6 +349,7 @@
                 <artifactId>log4j-core</artifactId>
                 <version>${log4j.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-1.2-api</artifactId>
@@ -357,6 +363,30 @@
                     <exclusion>
                         <groupId>log4j</groupId>
                         <artifactId>log4j</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.jena</groupId>
+                        <artifactId>jena-arq</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.jena</groupId>
+                        <artifactId>jena-base</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.jena</groupId>
+                        <artifactId>jena-core</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.jena</groupId>
+                        <artifactId>jena-iri</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.jena</groupId>
+                        <artifactId>jena-shaded-guava</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.jena</groupId>
+                        <artifactId>jena-tdb</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>

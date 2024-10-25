@@ -12,8 +12,8 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.engine.binding.Binding;
+import org.apache.jena.sparql.engine.binding.BindingBuilder;
 import org.apache.jena.sparql.engine.binding.BindingFactory;
-import org.apache.jena.sparql.engine.binding.BindingMap;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.log4j.Logger;
 import org.geneontology.minerva.curie.CurieHandler;
@@ -297,11 +297,11 @@ public class GPADSPARQLExport {
 
     @SafeVarargs
     private final Binding createBinding(Pair<Var, Node>... bindings) {
-        BindingMap map = BindingFactory.create();
+        BindingBuilder builder = BindingFactory.builder();
         for (Pair<Var, Node> binding : bindings) {
-            map.add(binding.getLeft(), binding.getRight());
+            builder.add(binding.getLeft(), binding.getRight());
         }
-        return map;
+        return builder.build();
     }
 
     private Set<AnnotationExtension> possibleExtensions(Set<BasicGPADData> basicAnnotations, Model model) {

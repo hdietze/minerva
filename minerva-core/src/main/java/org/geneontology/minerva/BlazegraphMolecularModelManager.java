@@ -7,11 +7,18 @@ import com.bigdata.rdf.sail.BigdataSailRepositoryConnection;
 import info.aduna.iteration.Iterations;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.shex.ShapeMap;
+import org.apache.jena.shex.ShexReport;
+import org.apache.jena.shex.ShexSchema;
+import org.apache.jena.shex.ShexValidator;
+import org.apache.jena.sys.JenaSystem;
 import org.apache.log4j.Logger;
 import org.geneontology.minerva.MolecularModelManager.UnknownIdentifierException;
 import org.geneontology.minerva.curie.CurieHandler;
 import org.geneontology.minerva.util.AnnotationShorthand;
 import org.geneontology.minerva.util.BlazegraphMutationCounter;
+import org.geneontology.minerva.util.JenaOwlTool;
 import org.geneontology.minerva.util.ReverseChangeGenerator;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
@@ -22,6 +29,7 @@ import org.openrdf.query.parser.QueryPrologLexer;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.RepositoryResult;
 import org.openrdf.rio.*;
+import org.openrdf.rio.helpers.BasicWriterSettings;
 import org.openrdf.rio.helpers.RDFHandlerBase;
 import org.openrdf.rio.helpers.StatementCollector;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -67,6 +75,7 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
     public BlazegraphMolecularModelManager(OWLOntology tbox, CurieHandler curieHandler, String modelIdPrefix, @Nonnull String pathToJournal, String pathToExportFolder, String pathToOntologyJournal, boolean downloadOntologyJournal)
             throws OWLOntologyCreationException, IOException {
         super(tbox, pathToOntologyJournal, downloadOntologyJournal);
+        JenaSystem.init();
         if (curieHandler == null) {
             LOG.error("curie handler required for blazegraph model manager startup ");
             System.exit(-1);
@@ -195,23 +204,14 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
         final OWLOntologyManager manager = ont.getOWLOntologyManager();
         List<OWLOntologyChange> changes = preSaveFileHandler(ont);
         synchronized (ont) {
-            try {
-                this.writeModelToDatabase(ont, modelId);
-                // reset modified flag for abox after successful save
-                m.setAboxModified(false);
-                // dump stored model to export file
-                if (this.pathToExportFolder != null) {
-                    File folder = new File(this.pathToExportFolder);
-                    dumpStoredModel(modelId, folder);
-                }
-            } finally {
-                if (changes != null) {
-                    List<OWLOntologyChange> invertedChanges = ReverseChangeGenerator
-                            .invertChanges(changes);
-                    if (invertedChanges != null && !invertedChanges.isEmpty()) {
-                        manager.applyChanges(invertedChanges);
-                    }
-                }
+            manager.applyChanges(changes);
+            this.writeModelToDatabase(ont, modelId);
+            // reset modified flag for abox after successful save
+            m.setAboxModified(false);
+            // dump stored model to export file
+            if (this.pathToExportFolder != null) {
+                File folder = new File(this.pathToExportFolder);
+                dumpStoredModel(modelId, folder);
             }
         }
     }
@@ -241,14 +241,10 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
     }
 
     private List<OWLOntologyChange> preSaveFileHandler(OWLOntology model) throws UnknownIdentifierException {
-        List<OWLOntologyChange> allChanges = null;
+        List<OWLOntologyChange> allChanges = new ArrayList<>();
         for (PreFileSaveHandler handler : preFileSaveHandlers) {
             List<OWLOntologyChange> changes = handler.handle(model);
             if (changes != null && !changes.isEmpty()) {
-                if (allChanges == null) {
-                    allChanges = new ArrayList<OWLOntologyChange>(
-                            changes.size());
-                }
                 allChanges.addAll(changes);
             }
         }
@@ -992,6 +988,31 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
             }
         }
         return changes;
+    }
+
+    public static class ShexValidatingPreSaveFileHandler implements PreFileSaveHandler {
+
+        private final ShexSchema schema;
+        private final ShapeMap shapeMap;
+        private final OWLAnnotationProperty conformanceProperty;
+        public ShexValidatingPreSaveFileHandler(ShexSchema schema, ShapeMap map, String propertyIRI) {
+            this.schema = schema;
+            this.shapeMap = map;
+            this.conformanceProperty = OWLManager.getOWLDataFactory().getOWLAnnotationProperty(IRI.create(propertyIRI));
+        }
+
+        @Override
+        public List<OWLOntologyChange> handle(OWLOntology modelOnt) throws UnknownIdentifierException {
+            OWLDataFactory factory = OWLManager.getOWLDataFactory();
+            Graph graph = JenaOwlTool.getJenaModel(modelOnt).getGraph();
+            ShexReport report = ShexValidator.get().validate(graph, schema, shapeMap);
+            boolean conforms = report.conforms();
+            System.out.println("CONFORMS? " + conforms);
+            System.out.println(factory.getOWLAnnotation(conformanceProperty, factory.getOWLLiteral(conforms)));
+            OWLOntologyChange remove = new RemoveOntologyAnnotation(modelOnt, factory.getOWLAnnotation(conformanceProperty, factory.getOWLLiteral(!conforms)));
+            OWLOntologyChange add = new AddOntologyAnnotation(modelOnt, factory.getOWLAnnotation(conformanceProperty, factory.getOWLLiteral(conforms)));
+            return Arrays.asList(remove, add);
+        }
     }
 
 }

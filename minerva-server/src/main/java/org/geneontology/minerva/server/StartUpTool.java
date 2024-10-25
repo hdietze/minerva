@@ -1,5 +1,8 @@
 package org.geneontology.minerva.server;
 
+import org.apache.jena.shex.ShapeMap;
+import org.apache.jena.shex.ShexSchema;
+import org.apache.jena.shex.parser.ShExC;
 import org.apache.log4j.Logger;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
@@ -7,6 +10,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.geneontology.minerva.BlazegraphMolecularModelManager;
 import org.geneontology.minerva.MinervaOWLGraphWrapper;
 import org.geneontology.minerva.ModelReaderHelper;
 import org.geneontology.minerva.UndoAwareMolecularModelManager;
@@ -93,6 +97,10 @@ public class StartUpTool {
         public MinervaShexValidator shex;
         public String pathToOntologyJournal;
 
+        public String pathToGPADSheX;
+
+        public String pathToGPADShapeMap;
+
     }
 
     public static void main(String[] args) throws Exception {
@@ -172,6 +180,10 @@ public class StartUpTool {
                 conf.sparqlEndpointTimeout = Integer.parseInt(opts.nextOpt());
             } else if (opts.nextEq("--ontojournal")) {
                 conf.pathToOntologyJournal = opts.nextOpt();
+            } else if (opts.nextEq("--gpad-shex")) {
+                conf.pathToGPADSheX = opts.nextOpt();
+            } else if (opts.nextEq("--gpad-shape-map")) {
+                conf.pathToGPADShapeMap = opts.nextOpt();
             } else {
                 break;
             }
@@ -340,6 +352,11 @@ public class StartUpTool {
                 conf.curieHandler, conf.modelIdPrefix, conf.journalFile, conf.exportFolder, conf.pathToOntologyJournal, true);
         // set pre and post file handlers
         models.addPostLoadOntologyFilter(ModelReaderHelper.INSTANCE);
+        if (conf.pathToGPADSheX != null && conf.pathToGPADShapeMap != null) {
+            ShexSchema schema = ShExC.parse(conf.pathToGPADSheX);
+            ShapeMap shapeMap = ShExC.parseShapeMap(conf.pathToGPADShapeMap);
+            models.addPreFileSaveHandler(new BlazegraphMolecularModelManager.ShexValidatingPreSaveFileHandler(schema, shapeMap, "http://geneontology.org/lego/conforms_to_gpad"));
+        }
         //	conf.shex.tbox_reasoner = models.getTbox_reasoner();
         conf.shex.setGo_lego_repo(models.getGolego_repo());
         conf.shex.curieHandler = conf.curieHandler;

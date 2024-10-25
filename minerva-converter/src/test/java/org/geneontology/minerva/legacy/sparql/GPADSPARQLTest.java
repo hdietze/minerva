@@ -5,7 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.rulesys.Rule;
-import org.apache.jena.system.JenaSystem;
+import org.apache.jena.sys.JenaSystem;
 import org.geneontology.jena.OWLtoRules;
 import org.geneontology.minerva.curie.DefaultCurieHandler;
 import org.geneontology.rules.engine.RuleEngine;

@@ -30,7 +30,8 @@ public enum AnnotationShorthand {
     deprecated(OWLRDFVocabulary.OWL_DEPRECATED.getIRI()), // model annotation to indicate deprecated models
     templatestate(IRI.create("http://geneontology.org/lego/templatestate"), "template"), // designate a model as a template
     modelstate(IRI.create("http://geneontology.org/lego/modelstate"), "state"),
-    wasDerivedFrom(IRI.create("http://www.w3.org/ns/prov#wasDerivedFrom"), "wasDerivedFrom");
+    wasDerivedFrom(IRI.create("http://www.w3.org/ns/prov#wasDerivedFrom"), "wasDerivedFrom"),
+    conformsToGPAD(IRI.create("http://geneontology.org/lego/conforms_to_gpad"), "conforms-to-gpad");
 
 
     private final IRI annotationProperty;
