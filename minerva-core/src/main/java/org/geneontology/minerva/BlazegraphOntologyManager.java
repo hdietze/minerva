@@ -96,15 +96,6 @@ public class BlazegraphOntologyManager {
         return go_lego_repo;
     }
 
-    public OWLOntology addTaxonModelMetaData(OWLOntology model, IRI taxon_iri) {
-        OWLOntologyManager ontman = model.getOWLOntologyManager();
-        OWLDataFactory df = ontman.getOWLDataFactory();
-        OWLAnnotation taxon_anno = df.getOWLAnnotation(in_taxon, taxon_iri);
-        OWLAxiom taxonannoaxiom = df.getOWLAnnotationAssertionAxiom(model.getOntologyID().getOntologyIRI().get(), taxon_anno);
-        ontman.addAxiom(model, taxonannoaxiom);
-        return model;
-    }
-
     public void unGunzipFile(String compressedFile, String decompressedFile) {
         byte[] buffer = new byte[1024];
         try {
@@ -622,13 +613,13 @@ public class BlazegraphOntologyManager {
         }
     }
 
-    public Set<String> getTaxaByGenes(Set<String> genes) throws IOException {
+    public Set<IRI> getTaxaByGenes(Set<String> genes) throws IOException {
         String expansion = "VALUES ?gene { ";
         for (String gene : genes) {
             expansion += "<" + gene + "> \n";
         }
         expansion += " } . \n";
-        Set<String> taxa = new HashSet<String>();
+        Set<IRI> taxa = new HashSet<>();
         try {
             BigdataSailRepositoryConnection connection = go_lego_repo.getReadOnlyConnection();
             try {
@@ -648,13 +639,11 @@ public class BlazegraphOntologyManager {
                     Value v = binding.getValue("taxon");
                     //ignore anonymous sub classes
                     if (v instanceof URI) {
-                        String taxon = binding.getValue("taxon").stringValue();
+                        IRI taxon = IRI.create(binding.getValue("taxon").stringValue());
                         taxa.add(taxon);
                     }
                 }
-            } catch (MalformedQueryException e) {
-                throw new IOException(e);
-            } catch (QueryEvaluationException e) {
+            } catch (MalformedQueryException | QueryEvaluationException e) {
                 throw new IOException(e);
             } finally {
                 connection.close();

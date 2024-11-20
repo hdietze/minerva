@@ -36,6 +36,8 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import static org.geneontology.minerva.BlazegraphOntologyManager.in_taxon;
+
 public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularModelManager<METADATA> {
 
     private static Logger LOG = Logger
@@ -180,21 +182,15 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
      * @throws RepositoryException
      * @throws UnknownIdentifierException
      */
-    public void saveModel(ModelContainer m)
-            throws OWLOntologyStorageException, OWLOntologyCreationException,
-            IOException, RepositoryException, UnknownIdentifierException {
+    public void saveModel(ModelContainer m) throws IOException, RepositoryException, UnknownIdentifierException {
         IRI modelId = m.getModelId();
-        OWLOntology ont2save = m.getAboxOntology();
-        Set<String> taxa = getTaxonsForModel(modelId.toString());
-        if (taxa != null) {
-            for (String taxon : taxa) {
-                ont2save = getGolego_repo().addTaxonModelMetaData(ont2save, IRI.create(taxon));
-            }
-        }
-        final OWLOntology ont = ont2save;
+        final OWLOntology ont = m.getAboxOntology();
         final OWLOntologyManager manager = ont.getOWLOntologyManager();
-        List<OWLOntologyChange> changes = preSaveFileHandler(ont);
         synchronized (ont) {
+            // This handler is not in the preSaveFileHandler list, because changes by those
+            // handlers are rolled back after save.
+            new ModelTaxonSaveHandler().handle(ont);
+            List<OWLOntologyChange> changes = preSaveFileHandler(ont);
             try {
                 this.writeModelToDatabase(ont, modelId);
                 // reset modified flag for abox after successful save
@@ -255,6 +251,11 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
         return allChanges;
     }
 
+    /**
+     * A PreFileSaveHandler may make changes to a model,
+     * returning the list of changes it made. Callers will
+     * assume that changes have been applied.
+     */
     public static interface PreFileSaveHandler {
 
         public List<OWLOntologyChange> handle(OWLOntology model) throws UnknownIdentifierException;
@@ -264,6 +265,40 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
     public void addPreFileSaveHandler(PreFileSaveHandler handler) {
         if (handler != null) {
             preFileSaveHandlers.add(handler);
+        }
+    }
+
+    private final class ModelTaxonSaveHandler implements PreFileSaveHandler {
+
+        @Override
+        public List<OWLOntologyChange> handle(OWLOntology model) throws UnknownIdentifierException {
+            OWLDataFactory factory = OWLManager.getOWLDataFactory();
+            final Set<OWLAnnotation> existingTaxonAnnotations = model.getAnnotations().stream()
+                    .filter(ann -> ann.getProperty().equals(in_taxon))
+                    .collect(Collectors.toSet());
+            final Set<IRI> existingTaxa = existingTaxonAnnotations.stream()
+                    .map(OWLAnnotation::getValue)
+                    .filter(OWLObject::isIRI)
+                    .map(v -> v.asIRI().get())
+                    .collect(Collectors.toSet());
+            Set<IRI> taxa = getTaxaForModel(model);
+            final Set<OWLAnnotation> annotationsToRemove = existingTaxonAnnotations.stream()
+                    .filter(ann -> !taxa.contains(ann.getValue()))
+                    .collect(Collectors.toSet());
+            final Set<IRI> taxaToAdd = taxa.stream()
+                    .filter(t -> !existingTaxa.contains(t))
+                    .collect(Collectors.toSet());
+            final Set<OWLOntologyChange> removals = annotationsToRemove.stream()
+                    .map(ann -> new RemoveOntologyAnnotation(model, ann))
+                    .collect(Collectors.toSet());
+            final Set<OWLOntologyChange> additions = taxaToAdd.stream()
+                    .map(t -> new AddOntologyAnnotation(model, factory.getOWLAnnotation(in_taxon, t)))
+                    .collect(Collectors.toSet());
+            final List<OWLOntologyChange> changes = new ArrayList<>();
+            changes.addAll(removals);
+            changes.addAll(additions);
+            model.getOWLOntologyManager().applyChanges(changes);
+            return changes;
         }
     }
 
@@ -843,13 +878,13 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
         }
     }
 
-    public Map<String, Set<String>> buildTaxonModelMap() throws IOException {
+    public Map<IRI, Set<String>> buildTaxonModelMap() throws IOException {
         Map<String, Set<String>> model_genes = buildModelGeneMap();
-        Map<String, Set<String>> taxon_models = new HashMap<String, Set<String>>();
+        Map<IRI, Set<String>> taxon_models = new HashMap<IRI, Set<String>>();
         for (String model : model_genes.keySet()) {
             Set<String> genes = model_genes.get(model);
-            Set<String> taxa = this.getGolego_repo().getTaxaByGenes(genes);
-            for (String taxon : taxa) {
+            Set<IRI> taxa = this.getGolego_repo().getTaxaByGenes(genes);
+            for (IRI taxon : taxa) {
                 Set<String> models = taxon_models.get(taxon);
                 if (models == null) {
                     models = new HashSet<String>();
@@ -900,14 +935,20 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
         return model_genes;
     }
 
-    public Set<String> getTaxonsForModel(String model_id) throws IOException {
-        Set<String> genes = getModelGenes(model_id);
+    @Nonnull
+    public Set<IRI> getTaxaForModel(OWLOntology model) {
+        String modelID = model.getOntologyID().getOntologyIRI().get().toString();
+        Set<String> genes = getModelGenes(modelID);
         if (genes.isEmpty()) {
-            return null;
+            return Collections.emptySet();
+        } else {
+            try {
+                return this.getGolego_repo().getTaxaByGenes(genes);
+            } catch (IOException e) {
+                LOG.error("Error querying ontology Blazegraph", e);
+                return Collections.emptySet();
+            }
         }
-        Set<String> taxa = this.getGolego_repo().getTaxaByGenes(genes);
-        return taxa;
-
     }
 
     public Set<String> getModelGenes(String model_id) {
@@ -947,16 +988,16 @@ public class BlazegraphMolecularModelManager<METADATA> extends CoreMolecularMode
 
 
     public void addTaxonMetadata() throws IOException {
-        Map<String, Set<String>> taxon_models = buildTaxonModelMap();
+        Map<IRI, Set<String>> taxon_models = buildTaxonModelMap();
         LOG.info("Ready to update " + taxon_models.keySet().size() + " " + taxon_models.keySet());
-        for (String taxon : taxon_models.keySet()) {
+        for (IRI taxon : taxon_models.keySet()) {
             LOG.info("Updating models in taxon " + taxon);
             Set<String> models = taxon_models.get(taxon);
             models.stream().parallel().forEach(model -> {
                 //fine for a few thousand models, but ends up eating massive ram for many
                 //addTaxonWithOWL(IRI.create(model), IRI.create(taxon));
                 try {
-                    addTaxonToDatabaseWithSparql(IRI.create(model), IRI.create(taxon));
+                    addTaxonToDatabaseWithSparql(IRI.create(model), taxon);
                 } catch (RepositoryException | UpdateExecutionException | MalformedQueryException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();

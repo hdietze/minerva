@@ -23,7 +23,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
+import static org.geneontology.minerva.BlazegraphOntologyManager.in_taxon;
 import static org.junit.Assert.*;
 
 public class BlazegraphMolecularModelManagerTest {
@@ -53,6 +55,30 @@ public class BlazegraphMolecularModelManagerTest {
         File dumpedModel = folder.getRoot().toPath().resolve(modelId.toString().replace("http://model.geneontology.org/", "") + ".ttl").toFile();
         compareDumpUsingJena(new File(sourceModelPath), dumpedModel, null);
         m3.dispose();
+    }
+
+    @Test
+    public void testTaxonAnnotationMaintenance() throws Exception {
+        IRI human = IRI.create("http://purl.obolibrary.org/obo/NCBITaxon_9606");
+        IRI boar = IRI.create("http://purl.obolibrary.org/obo/NCBITaxon_9823");
+        String sourceModelPath = "src/test/resources/test-model-taxon-annotations.ttl";
+        IRI modelIRI = IRI.create("http://model.geneontology.org/62183af000000536");
+        BlazegraphMolecularModelManager<Void> m3 = createBlazegraphMolecularModelManager();
+        m3.importModelToDatabase(new File(sourceModelPath), false);
+        ModelContainer model = m3.getModel(modelIRI);
+        Set<IRI> previousTaxonIRIs = model.getAboxOntology().getAnnotations().stream()
+                .filter(a -> a.getProperty().equals(in_taxon))
+                .map(a -> a.getValue().asIRI().get())
+                .collect(Collectors.toSet());
+        assertTrue(previousTaxonIRIs.contains(human));
+        assertTrue(previousTaxonIRIs.contains(boar));
+        m3.saveModel(model);
+        Set<IRI> newTaxonIRIs = model.getAboxOntology().getAnnotations().stream()
+                .filter(a -> a.getProperty().equals(in_taxon))
+                .map(a -> a.getValue().asIRI().get())
+                .collect(Collectors.toSet());
+        assertTrue(newTaxonIRIs.contains(human));
+        assertFalse(newTaxonIRIs.contains(boar));
     }
 
     @Test
