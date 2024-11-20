@@ -17,8 +17,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <owlapi.version>4.5.15</owlapi.version>
         <sesame.version>2.7.12</sesame.version> <!-- use same as Blazegraph  -->
-        <jetty.version>9.2.3.v20140905
-        </jetty.version> <!--  needs to be exactly 9.2.3.v20140905 - older or newer version of jetty will not work with text search api-->
+        <jetty.version>10.0.10</jetty.version> <!--  needs to be exactly 9.2.3.v20140905 - older or newer version of jetty will not work with text search api-->
         <jersey.version>2.29</jersey.version>
         <log4j.version>2.17.1</log4j.version>
     </properties>
