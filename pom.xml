@@ -352,7 +352,7 @@
             <dependency>
                 <groupId>org.obolibrary.robot</groupId>
                 <artifactId>robot-core</artifactId>
-                <version>1.7.1</version>
+                <version>1.9.5</version>
                 <exclusions>
                     <exclusion>
                         <groupId>log4j</groupId>
